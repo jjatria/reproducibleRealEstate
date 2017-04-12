@@ -39,7 +39,8 @@
 ### Converting data from .csv to .db -----------------------------------------------------
 
   if(convertData){
-  
+    message('Converting data');
+
  ## Convert Assessor's Characteristic Data
   
     convertCSVtoSQLite(dataPathCurrent = dataPath,
@@ -50,6 +51,8 @@
                                       paste0('ResBldg', studyYear2014),
                        overWrite=TRUE) 
 
+    message('Created KingData2014.db');
+
  ## Convert Assessed Value History
  
     convertCSVtoSQLite(dataPathCurrent=dataPath,
@@ -59,12 +62,16 @@
                        tableNames = c('ValueHistory'),
                        overWrite=TRUE)
 
+    message('Created KingValueHistory.db');
+
  ##  Isolate the study year Assessed Value File 
  
     kngBuildAssdVal(avYears=studyYear+1,  
                     assdValDB = file.path(dataPath, 'kingvaluehistory.db'),
                     overWrite=TRUE)
 
+
+    message('Isolated study year');
 
  ## Convert Sales File
 
@@ -74,6 +81,8 @@
                        fileNames=c('EXTR_RPSale.csv'),
                        tableNames = c('AllSales'),
                        overWrite=TRUE)
+
+    message('Converted sales file');
 
   }
 
