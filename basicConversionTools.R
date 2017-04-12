@@ -1,22 +1,24 @@
 
 ### Convert Microsoft Access into SQLite data --------------------------------------------
 
-convertMSAtoSQLite <- function(dataPathCurrent,             # Path to Access Files
-                               dataPathNew=dataPathCurrent, # Path to new files
-                               overWrite=FALSE,             # Overwrite existing .db?
-                               fileNames=NULL,              # File name(s) of Access files
-                               newFileNames=NULL,           # File name(s) of .db file?
-                               verbose=FALSE,               # Should debugging be shown
-                               writeRowNames=FALSE          # Write row names?
-                               ){
+convertMSAtoSQLite <- function(
+    dataPathCurrent,                   # Path to Access Files
+    dataPathNew     = dataPathCurrent, # Path to new files
+    overWrite       = FALSE,           # Overwrite existing .db?
+    fileNames       = NULL,            # File name(s) of Access files
+    newFileNames    = NULL,            # File name(s) of .db file?
+    verbose         = FALSE,           # Should debugging be shown
+    writeRowNames   = FALSE            # Write row names?
+  ) {
+
   ## Set libraries
   
   require(RSQLite)
   require(RODBC)
 
-  ## Determine File Names to convert
+  if (verbose > 0) mesage('Determine File Names to convert')
   
-  if(!is.null(fileNames)){
+  if (!is.null(fileNames)) {
     fileList <- fileNames
     if(is.null(newFileNames)) newFileNames <- fileNames
   } else {
@@ -25,32 +27,40 @@ convertMSAtoSQLite <- function(dataPathCurrent,             # Path to Access Fil
     newFileNames <- fileList
   }
   
-  ## Show error if file names are not same length
+  if (verbose > 0) message('Show error if file names are not same length')
   
-  if(length(fileList) != length(newFileNames)){
+  if (length(fileList) != length(newFileNames)) {
     cat('ERROR: File names not same length')
     return('File names not the same length')
   }  
   
-  ## Set up connections, read and write files
+  if (verbose > 0) message(''Set up connections, read and write files');
   
   for(fL in 1:length(fileList)){
-    if(verbose) cat(paste0('Converting file number: ', fL, ' of ', 
-                           length(fileList), '\n'))
+    
+    if (verbose > 0) 
+      message('Converting file number: ', fL, ' of ', length(fileList))
     
     # Set up connections
     
     msaConn <- odbcConnectAccess2007(paste0(dataPathCurrent, '/', 
                                             fileList[fL]))
-    if(verbose) cat("  Converting from MS Access file: ",
-                    paste0(dataPathCurrent, '/', fileList[fL], '\n'))
+    if (verbose >0) 
+      message(
+        '  Converting from MS Access file: ', 
+        file.path(dataPathCurrent, fileList[fL])
+      )
     
-    slConn <- dbConnect(RSQLite::SQLite(),
-                        dbname=paste0(dataPathNew, '/', 
-                                      gsub('.accdb', '.db', newFileNames[fL])))
-    if(verbose) cat("  Converting to SQLite file: ",
-                    paste0(dataPathNew, '/', 
-                           gsub('.accdb', '.db', newFileNames[fL]), '\n'))
+    slConn <- dbConnect(
+      RSQLite::SQLite(),
+      dbname = file.path(dataPathNew, gsub('.accdb', '.db', newFileNames[fL]))
+    )
+
+    if (verbose > 0) 
+      message(
+        '  Converting to SQLite file: ',
+        file.path(dataPathNew, gsub('.accdb', '.db', newFileNames[fL]))
+      )
     
     # Read in Tables
     msaTables <- sqlTables(msaConn)
@@ -58,21 +68,29 @@ convertMSAtoSQLite <- function(dataPathCurrent,             # Path to Access Fil
     
     # Write Tables
     for(tL in 1:nrow(msaTables)){
-      xTable <- sqlQuery(msaConn, 
-                         paste0('SELECT * FROM ',
-                                msaTables$TABLE_NAME[tL]))
+      xTable <- sqlQuery(
+        msaConn, 
+        paste0('SELECT * FROM ', msaTables$TABLE_NAME[tL])
+      )
       
       tExists <- dbExistsTable(slConn, msaTables$TABLE_NAME[tL])
       
-      if(overWrite & tExists) {
+      if (overWrite & tExists) {
         dbRemoveTable(slConn, msaTables$TABLE_NAME[tL])
-        if(verbose) cat(paste0("    Removing existing table: ",
-                                   msaTables$TABLE_NAME[tL], '\n'))
+
+        if (verbose > 0) 
+          message('    Removing existing table: ", msaTables$TABLE_NAME[tL]))
+
       }
-      dbWriteTable(slConn, msaTables$TABLE_NAME[tL], xTable, 
-                   row.names=writeRowNames)
-      if(verbose) cat(paste0("    Writing table: ", msaTables$TABLE_NAME[tL],
-                             '\n'))
+      
+      dbWriteTable(
+        slConn, 
+        msaTables$TABLE_NAME[tL], 
+        xTable, 
+        row.names = writeRowNames
+      )
+
+      if (verbose > 0) message('    Writing table: ', msaTables$TABLE_NAME[tL])
     }
     
     # Close
@@ -80,80 +98,81 @@ convertMSAtoSQLite <- function(dataPathCurrent,             # Path to Access Fil
     dbDisconnect(slConn)
   }
     
-    # Return List of tables written
+  # Return List of tables written
   
-return(fileList)
+  return(fileList)
   
 }
 
 ### Convert CSV into SQLite data ---------------------------------------------------------
 
-convertCSVtoSQLite <- function(dataPathCurrent,             # Path to .csv files
-                               dataPathNew=dataPathCurrent, # Path to new .db file
-                               newFileName,                 # Name of new .db file
-                               fileNames=NULL,              # Names of .csv to convert
-                               tableNames=NULL,             # Names of new tables in .db
-                               overWrite=FALSE,             # Overwrite existing tables?
-                               verbose=FALSE,               # Show debugging
-                               writeRowNames=FALSE          # Write out row names?
-){
+convertCSVtoSQLite <- function(
+    dataPathCurrent,                    # Path to .csv files
+    dataPathNew      = dataPathCurrent, # Path to new .db file
+    newFileName,                        # Name of new .db file
+    fileNames        = NULL,            # Names of .csv to convert
+    tableNames       = NULL,            # Names of new tables in .db
+    overWrite        = FALSE,           # Overwrite existing tables?
+    verbose          = FALSE,           # Show debugging
+    writeRowNames    = FALSE            # Write out row names?
+  ) {
+
   ## Set libraries
   
   require(RSQLite)
   require(RODBC)
   
-  ## Determine File Names to convert
+  if (verbose > 0) message('Determine File Names to convert')
   
-  if(!is.null(fileNames)){
+  if (!is.null(fileNames)) {
     fileList <- fileNames
-    if(is.null(tableNames)) tableNames <- gsub('.csv', '', fileNames)
+    if (is.null(tableNames)) tableNames <- gsub('.csv', '', fileNames)
   } else {
     fileList <- list.files(dataPathCurrent)
     fileList <- fileList[grep('.csv', fileList)]
-    if(is.null(tableNames)) tableNames <- gsub('.csv', '', fileList)
+    if (is.null(tableNames)) tableNames <- gsub('.csv', '', fileList)
   }
   
-  ## Check for proper length in file name lists
+  if (verbose > 0) message('Check for proper length in file name lists')
   
-  if(length(fileList) != length(tableNames)){
-    cat('ERROR: File names and table names not same length')
-    return('File and table names not the same length')
+  if (length(fileList) != length(tableNames)) {
+    stop('File names and table names not same length')
   }
 
-  ## Set up connections
+  if (verbose > 0) message('Set up connections')
 
   slConn <- dbConnect(RSQLite::SQLite(),
                       dbname=paste0(dataPathNew, '/', newFileName))
-  if(verbose) cat("  Converting to SQLite file: ",
-                  paste0(dataPathNew, '/', newFileName), '\n')
-  
-  ## Read in and convert each file
+  if (verbose > 0) 
+    message('  Converting to SQLite file: ', file.path(dataPathNew, newFileName))
   
   for(fL in 1:length(fileList)){
-    if(verbose) cat(paste0('Converting file number: ', fL, ' of ', 
-                           length(fileList), '\n'))
+    if (verbose > 0) 
+      message('Converting file number: ', fL, ' of ', length(fileList))
     
     # Read in Tables
-    xTable <- read.csv(paste0(dataPathCurrent, '/', fileList[fL]))
+    xTable <- read.csv(file.path(dataPathCurrent, fileList[fL]))
       
     # Check to see if it exists
     tExists <- dbExistsTable(slConn, tableNames[fL])
     
-    # Overwrite if exists
-    if(overWrite & tExists) {
+    if (overWrite & tExists) {
         dbRemoveTable(slConn, tableNames[fL])
-        if(verbose) cat(paste0("    Removing existing table: ",
-                               tableNames[fL], '\n'))
+
+        if (verbose > 0) message('    Removing existing table: ', tableNames[fL])
     }
     
     # Write if doesn't exist
-    dbWriteTable(slConn, tableNames[fL], xTable, 
-                   row.names=writeRowNames)
-    if(verbose) cat(paste0("    Writing table: ", tableNames[fL],
-                             '\n'))
+    dbWriteTable(
+      slConn, 
+      tableNames[fL], 
+      xTable, 
+      row.names = writeRowNames
+    )
+
+    if (verbose > 0) message('    Writing table: ', tableNames[fL])
   }
     
-  # Close
   dbDisconnect(slConn)
 
   # Return List of tables written
