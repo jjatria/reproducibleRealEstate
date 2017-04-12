@@ -17,12 +17,12 @@
   library(plyr)
 
  ## Set directories  (You must update these)
-  
-  codePath <- '.../reproducibleRealEstat'
-  dataPath <- '.../reproducibleRealEstate'
 
- ## Read in Functions and helper files  
-  
+  codePath <- '.'
+  dataPath <- './data'
+
+ ## Read in Functions and helper files
+
   source(file.path(codePath, '/basicConversionTools.R'))
   source(file.path(codePath, '/kingDataDevelop.R'))
   source(file.path(codePath, '/kingBuildSales.R'))
