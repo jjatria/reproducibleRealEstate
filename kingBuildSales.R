@@ -11,9 +11,10 @@ if (!exists('STUDY_YEAR')) STUDY_YEAR <- file.path('.');
 
 ### (SUB) Create Function to count total transactions ------------------------------------
 
-kngSBuildTransCount <- function(xSales,                    # Sales dataFrame
-                                transLimit                 # Maximum allowed
-                                ){
+kngSBuildTransCount <- function (
+    xSales,                    # Sales dataFrame
+    transLimit                 # Maximum allowed
+  ) {
 
   # Compute trans number
   pinxTable <- as.data.frame(table(xSales$pinx))
@@ -43,8 +44,9 @@ kngSBuildTransCount <- function(xSales,                    # Sales dataFrame
 
 ### (SUB) Function that adds Unique IDs for sales ----------------------------------------
 
-kngSBuildSaleUIDs <- function(xSales                       # Sales dataframes
-                              ){
+kngSBuildSaleUIDs <- function (
+    xSales                       # Sales dataframes
+  ) {
 
   # Add Unique IDs for each Record and Each Sales
   years <- rownames(table(xSales$salesYear))
@@ -67,21 +69,25 @@ kngSBuildSaleUIDs <- function(xSales                       # Sales dataframes
 
 ### (MAIN) Function that cleans up raw sales data ----------------------------------------
 
-kngSCleanSales <- function(saleYears = c(1997, 2014),      # Sales years to use
-                           transLimit = 10,                # Max number of sales per prop
-                           salesDB = file.path(DATA_PATH, 'KingSales.db'),
-                           trimList=list(SaleReason=2:19,
-                                        SaleInstrument=c(0, 1, 4:28),
-                                        SaleWarning=paste0(" ", c(1:2, 5:9, 11:14,
-                                                                  18:23, 25, 27,
-                                                                  31:33, 37, 39,
-                                                                  43, 46, 48, 49,
-                                                                  50:53, 59, 61,
-                                                                  63, 64, 66),
-                                                           " ")),
-                           overWrite=TRUE,                 # Overwrite existing files
-                           verbose=FALSE                   # Give progress
-                           ){
+kngSCleanSales <- function (
+    salesDB    = file.path(DATA_PATH, 'KingSales.db'),
+    saleYears  = c(1997, 2014),       # Sales years to use
+    transLimit = 10,                  # Max number of sales per prop
+    overWrite  = TRUE,                # Overwrite existing files
+    verbose    = FALSE                # Give progress
+    trimList = list(
+      SaleReason     = 2:19,
+      SaleInstrument = c(0, 1, 4:28),
+      SaleWarning    = paste0(" ", c(
+        1:2, 5:9, 11:14,
+        18:23, 25, 27,
+        31:33, 37, 39,
+        43, 46, 48, 49,
+        50:53, 59, 61,
+        63, 64, 66),
+      " ")
+    ),
+  ) {
 
   # libraries
   require(RODBC)
@@ -157,10 +163,11 @@ kngSCleanSales <- function(saleYears = c(1997, 2014),      # Sales years to use
 
 ### Function to read in king data for a given year ---------------------------------------
 
-kngSReadData <- function(dbName=NULL,
-                         year=NULL,                        # Current year
-                         verbose=FALSE                     # Show progress
-                         ){
+kngSReadData <- function (
+    dbName  = NULL,
+    year    = NULL,                     # Current year
+    verbose = FALSE                     # Show progress
+  ) {
 
 
 
@@ -190,10 +197,11 @@ kngSReadData <- function(dbName=NULL,
 
 ### Function to add present use to sale --------------------------------------------------
 
-kngSAddPresentUse <- function(ySales,                      # Set of yearly sales
-                              yParcel,                     # Parcel data from year
-                              ySuffix                      # Year to use
-                              ){
+kngSAddPresentUse <- function (
+    ySales,                      # Set of yearly sales
+    yParcel,                     # Parcel data from year
+    ySuffix                      # Year to use
+  ) {
 
   # All Props
   ySales[paste0('parcel', ySuffix)] <- yParcel$PresentUse[match(ySales$pinx,
@@ -203,11 +211,12 @@ kngSAddPresentUse <- function(ySales,                      # Set of yearly sales
 
 ### Function to add record type to a set of sales ----------------------------------------
 
-kngSAddRecordType <- function(ySales,                       # Set of yearly sales
-                              yTable,                       # Record Type table to test
-                              fieldName,                    # Name of new field to apply
-                              condoComp=FALSE               # Is this condoComp?
-                              ){
+kngSAddRecordType <- function (
+    ySales,                       # Set of yearly sales
+    yTable,                       # Record Type table to test
+    fieldName,                    # Name of new field to apply
+    condoComp=FALSE               # Is this condoComp?
+  ) {
 
   # Set blanks
   ySales[fieldName] <- 0
@@ -228,9 +237,10 @@ kngSAddRecordType <- function(ySales,                       # Set of yearly sale
 
 ### Function to place label on sales based on record type situation ----------------------
 
-kngSLabelRecordType <- function(ySales,                     # Set of yearly sales
-                                ySuffix                     # Suffix type to add (_1,0,1)
-                                ){
+kngSLabelRecordType <- function (
+    ySales,                     # Set of yearly sales
+    ySuffix                     # Suffix type to add (_1,0,1)
+  ) {
 
   ySales[paste0('Rt', ySuffix)] <- 'V'
   ySales[is.na(ySales[paste0('parcel', ySuffix)]), paste0('Rt', ySuffix)] <- 'X'
@@ -242,7 +252,7 @@ kngSLabelRecordType <- function(ySales,                     # Set of yearly sale
   return(ySales)
 }
 
-### Function that applies labels to king sales -------------------------------------------
+### Function that applies labels to king sales ---------------------------------
 
 kngSLabelSales <- function(saleYears=1999:2014,             # Sale years to use
                            salesDB=file.path(DATA_PATH, 'KingSales.db'),
@@ -311,12 +321,12 @@ kngSLabelSales <- function(saleYears=1999:2014,             # Sale years to use
 
 ### Function that confirms King county sale labels ---------------------------------------
 
-kngSConfirmLabels <- function(
+kngSConfirmLabels <- function (
     salesDB    = file.path(DATA_PATH, 'KingSales.db'),
     latestYear = STUDY_YEAR,              # Last year in data
     verbose    = FALSE,                # Show progress
     overWrite  = TRUE                # Overwrite?
-  ){
+  ) {
 
   ## Init ops
   require(RSQLite)
@@ -375,7 +385,7 @@ kngSConfirmLabels <- function(
 
 ### Function that splits sales and adds data to them -------------------------------------
 
-kngSSplitAttachSales <- function(
+kngSSplitAttachSales <- function (
     salesDB   = file.path(DATA_PATH, 'KingSales.db'),
     verbose   = FALSE,
     overWrite = TRUE
@@ -439,7 +449,7 @@ kngSSplitAttachSales <- function(
 
 ### Function to attach King data to king sales -------------------------------------------
 
-kngSAttachKingData <- function(
+kngSAttachKingData <- function (
     xSales,                        # Sales data frame
     recType                        # Record Type
   ) {
@@ -470,13 +480,13 @@ kngSAttachKingData <- function(
 
 ### Function to attach assessed values ---------------------------------------------------
 
-kngSAttachAssdValues <- function(
+kngSAttachAssdValues <- function (
     salesDB,
     dataDir,
     dataYear,
     verbose   = FALSE,
     overWrite = TRUE
-  ){
+  ) {
 
   ## Load in Sales
 
@@ -510,11 +520,11 @@ kngSAttachAssdValues <- function(
 
 ### Function to attach XY values ---------------------------------------------------------
 
-kngSAttachXYs <- function(
+kngSAttachXYs <- function (
     sales,
     latlongFile,
     verbose = FALSE
-  ){
+  ) {
 
   if (verbose > 0) message('Reading in XY data')
 
