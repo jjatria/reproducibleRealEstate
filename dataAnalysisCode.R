@@ -1,16 +1,16 @@
-'#########################################################################################
-#                                                                                        #
-#       Analyzing King County Sales Data                                                 #
-#                                                                                        #
-#       by Anonymous Real Estate Author                                                  #
-#                                                                                        #
-#       Code for Data Analysis                                                           #                                                                                                      ###
-#                                                                                        #
-#########################################################################################'
+################################################################################
+#                                                                              #
+#       Analyzing King County Sales Data                                       #
+#                                                                              #
+#       by Anonymous Real Estate Author                                        #
+#                                                                              #
+#       Code for Data Analysis                                                 #
+#                                                                              #
+################################################################################
 
-### Load Libraries, Helper Files and Set Global Parameters -------------------------------
+### Load Libraries, Helper Files and Set Global Parameters ---------------------
 
- ## Load Libraries
+  ## Load Libraries
 
   library(maptools)
   library(spdep)
@@ -18,24 +18,24 @@
   library(rgeos)
   library(spam)
 
- ## Set location parameter (You must update these)
+  ## Set location parameter (You must update these)
 
-  codePath <- '.../reproducibleRealEstat'
-  dataPath <- '.../reproducibleRealEstate'
+  CODE_PATH <- file.path('.')
+  DATA_PATH <- file.path('.', 'data')
+  VERBOSITY <- 1                       # Increase value for more output
 
- ## Source Files
+  ## Source Files
 
-  source(file.path(codePath, 'spatEconTools.R'))
+  source(file.path(CODE_PATH, 'spatEconTools.R'))
 
-### Load in Data -------------------------------------------------------------------------
+  ### --------------------------------------------------------------------------
+  if (VERBOSITY) message('Load in Prepared sales data')
 
- ##  Load in Prepared sales data
+  kcSales <- read.csv(file.path(DATA_PATH, 'cleansales.csv'), header = TRUE)
 
-  kcSales <- read.csv(file.path(dataPath, 'cleanSales.csv'), header=T)
-
-### Initial data clean -------------------------------------------------------------------
-
- ## Remove any remaining likely non Single Family Residential
+  ### --------------------------------------------------------------------------
+  if (VERBOSITY)
+    message('Remove remaining likely non Single Family Residential')
 
   # Remove multiple building sales
   kcSales <- subset(kcSales, nbrBldgs == 1)
@@ -49,23 +49,27 @@
   # Remove those with an improved assessed value of 0
   kcSales <- subset(kcSales, ImpsVal != 0)
 
-### Data transformation ------------------------------------------------------------------
-
- ## Control variables
+  ### --------------------------------------------------------------------------
+  if (VERBOSITY) message('Setting control variables')
 
   # Create a sales month variable
-  kcSales$Month <- as.numeric(substr(kcSales$DocumentDate,1,2))
+  kcSales$Month <- as.numeric(substr(kcSales$DocumentDate, 1, 2))
 
   # Create a waterfront Binary variable
   kcSales$WFNT <- ifelse(kcSales$WfntLocation > 0, 1, 0)
 
   # Sum up all bathrooms
-  kcSales$Baths <- (kcSales$BathFullCount + kcSales$Bath3qtrCount * .75 +
-                    kcSales$BathHalfCount * .5)
+  kcSales$Baths <- (
+    kcSales$BathFullCount +
+    kcSales$Bath3qtrCount * 0.75 +
+    kcSales$BathHalfCount * 0.5
+  )
 
   # Sum up all fireplaces
-  kcSales$Fireplaces <- (kcSales$FpSingleStory + kcSales$FpMultiStory +
-                         kcSales$FpFreestanding + kcSales$FpAdditional)
+  kcSales$Fireplaces <- (
+    kcSales$FpSingleStory  + kcSales$FpMultiStory +
+    kcSales$FpFreestanding + kcSales$FpAdditional
+  )
 
   # Create a binary variable for townhomes
   kcSales$Townhome <- ifelse(kcSales$PresentUse == 29, 1, 0)
@@ -75,45 +79,68 @@
   kcSales$homeSize <- kcSales$SqFtTotLiving / 1000
   kcSales$Age <- 2014 - kcSales$YrBuilt
 
- ## Variables of interest (Views)
+  if (VERBOSITY) message('Variables of interest (Views)')
 
   # Has Mountain View
-  kcSales$viewMount <- ifelse(rowSums(cbind(kcSales$MtRainier, kcSales$Olympics,
-                                            kcSales$Cascades)) > 0, 1, 0)
+  kcSales$viewMount <- ifelse(
+    rowSums(
+      cbind(kcSales$MtRainier, kcSales$Olympics, kcSales$Cascades)
+    ) > 0, 1, 0
+  )
 
   # Best Mountain View Rating
-  kcSales$viewMountScore <- apply(cbind(kcSales$MtRainier, kcSales$Olympics,
-                                        kcSales$Cascades), 1, max)
+  kcSales$viewMountScore <- apply(
+    cbind(kcSales$MtRainier, kcSales$Olympics, kcSales$Cascades), 1, max
+  )
 
   # Has Water View
-  kcSales$viewWater <- ifelse(rowSums(cbind(kcSales$PugetSound, kcSales$LakeWashington,
-                                            kcSales$LakeSammamish)) > 0, 1, 0)
+  kcSales$viewWater <- ifelse(
+    rowSums(
+      cbind(kcSales$PugetSound, kcSales$LakeWashington, kcSales$LakeSammamish)
+    ) > 0, 1, 0
+  )
 
   # Best Water View Rating
-  kcSales$viewWaterScore <- apply(cbind(kcSales$PugetSound, kcSales$LakeWashington,
-                                        kcSales$LakeSammamish), 1, max)
+  kcSales$viewWaterScore <- apply(
+    cbind(
+      kcSales$PugetSound, kcSales$LakeWashington, kcSales$LakeSammamish
+    ), 1, max
+  )
 
   # Has Other View
-  kcSales$viewOther <- ifelse(rowSums(cbind(kcSales$Territorial, kcSales$SeattleSkyline,
-                                            kcSales$SmallLakeRiverCreek,
-                                            kcSales$OtherView)) > 0, 1, 0)
+  kcSales$viewOther <- ifelse(
+    rowSums(
+      cbind(
+        kcSales$Territorial, kcSales$SeattleSkyline,
+        kcSales$SmallLakeRiverCreek, kcSales$OtherView
+      )
+    ) > 0, 1, 0
+  )
 
   # Best Water View Rating
-  kcSales$viewOtherScore <- apply(cbind(kcSales$Territorial, kcSales$SeattleSkyline,
-                                        kcSales$SmallLakeRiverCreek,
-                                        kcSales$OtherView), 1, max)
+  kcSales$viewOtherScore <- apply(
+    cbind(
+      kcSales$Territorial, kcSales$SeattleSkyline,
+      kcSales$SmallLakeRiverCreek, kcSales$OtherView
+    ), 1, max
+  )
 
   # Multiple Views?
-  kcSales$viewMult <- ifelse(rowSums(cbind(kcSales$viewMount, kcSales$viewWater,
-                                           kcSales$viewOther)) > 0, 1, 0)
+  kcSales$viewMult <- ifelse(
+    rowSums(
+      cbind(kcSales$viewMount, kcSales$viewWater, kcSales$viewOther)
+    ) > 0, 1, 0
+  )
 
   # Total view score across all categories
-  kcSales$viewTotalScore <- rowSums(kcSales[,which(names(kcSales) == 'MtRainier'):
-                                              which(names(kcSales) == 'OtherView')])
+  kcSales$viewTotalScore <- rowSums(
+    kcSales[,
+      which(names(kcSales) == 'MtRainier'):which(names(kcSales) == 'OtherView')
+    ]
+  )
 
-### Create a trimmed set that removes outliers -------------------------------------------
-
- ## Create trimmed set
+  ### --------------------------------------------------------------------------
+  if (VERBOSITY) message('Creating trimmed set without outliers')
 
   # Remove sales with more than 2 acres of land
   trimSales <- subset(kcSales, SqFtLot < (43560 * 2))
@@ -124,52 +151,85 @@
   # Remove sales with more than 8 bedrooms
   trimSales <- subset(trimSales, SqFtTotLiving >= 500 & SqFtTotLiving <= 8000)
 
-### Create a base model ------------------------------------------------------------------
+  ### --------------------------------------------------------------------------
+  if (VERBOSITY) message('Creating based model')
 
-  modBase <- lm(log(SalePrice) ~ as.factor(Month) + lotAcres + WFNT + BldgGrade +
-                  homeSize + Baths + Age + Fireplaces + Townhome +
-                  viewMount + viewWater + viewOther, data=trimSales)
+  modBase <- lm(
+    log(SalePrice) ~ as.factor(Month) +
+      lotAcres  + WFNT      + BldgGrade  + homeSize +
+      Baths     + Age       + Fireplaces + Townhome +
+      viewMount + viewWater + viewOther,
+    data = trimSales
+  )
 
- ## Test for spatial autocorrelation
+  if (VERBOSITY) message('Test for spatial autocorrelation')
 
-  salesSP <- SpatialPointsDataFrame(coords=cbind(trimSales$X, trimSales$Y),
-                                       data=trimSales)
+  salesSP <- SpatialPointsDataFrame(
+    coords = cbind(trimSales$X, trimSales$Y),
+    data   = trimSales
+  )
 
   # Create the Spatial Weights Matrix
 
-  swmAll10 <- createSWM(salesSP, 10, nugget=25)
+  swmAll10 <- createSWM(
+    salesSP,
+    10,
+    nugget = 25
+  )
 
   # Test for spatial autocorrelation in the error terms
 
-  miAll <- moran.test(modBase$resid, swmAll10, zero.policy=TRUE)
+  miAll <- moran.test(
+    modBase$resid,
+    swmAll10,
+    zero.policy = TRUE
+  )
 
   # Test for the type of spatial dependence
 
-  lmAll <- lm.LMtests(modBase, swmAll10, test=c("LMerr", "LMlag", "RLMerr", "RLMlag"))
+  lmAll <- lm.LMtests(
+    modBase,
+    swmAll10,
+    test = c("LMerr", "LMlag", "RLMerr", "RLMlag")
+  )
 
- ## Specify a Spatial Error Model
+  ## Specify a Spatial Error Model
 
   # Estimate Model
 
-  modSEM <- errorsarlm(as.formula(modBase), data=salesSP@data, swmAll10, method="spam",
-                       zero.policy=TRUE)
+  modSEM <- errorsarlm(
+    as.formula(modBase),
+    data = salesSP@data,
+    swmAll10,
+    method = "spam",
+    zero.policy = TRUE
+  )
 
   calcPseudoR2(modSEM)
 
-### Add differntation based on view score
+  ### --------------------------------------------------------------------------
+  if (VERBOSITY) message('Add differentiation based on view score')
 
-  modBaseSc <- lm(log(SalePrice) ~ as.factor(Month) + lotAcres + WFNT + BldgGrade +
-                  homeSize + Baths +
-                  Age + Fireplaces + Townhome +
-                  as.factor(viewMountScore) +
-                  as.factor(viewWaterScore) +
-                  as.factor(viewOtherScore), data=trimSales)
+  modBaseSc <- lm(
+    log(SalePrice) ~ as.factor(Month) +
+      lotAcres + WFNT + BldgGrade  + homeSize +
+      Baths    + Age  + Fireplaces + Townhome +
+      as.factor(viewMountScore) +
+      as.factor(viewWaterScore) +
+      as.factor(viewOtherScore),
+    data = trimSales
+  )
 
- ## Specify a Spatial Error Model
+  ## Specify a Spatial Error Model
 
   # Estimate Model
 
-  modSEMSc <- errorsarlm(as.formula(modBaseSc), data=salesSP@data, swmAll10,
-                         method="spam", zero.policy=TRUE)
+  modSEMSc <- errorsarlm(
+    as.formula(modBaseSc),
+    data = salesSP@data,
+    swmAll10,
+    method = "spam",
+    zero.policy = TRUE
+  )
 
   calcPseudoR2(modSEMSc)
