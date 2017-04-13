@@ -1,11 +1,11 @@
-##########################################################################################
-#                                                                                        #
-#   This code creates the initial raw sales file to use in analyzing 2014                #
-#   King County Residential Sales data                                                   #
-#                                                                                        #
-##########################################################################################
+################################################################################
+#                                                                              #
+#   This code creates the initial raw sales file to use in analyzing 2014      #
+#   King County Residential Sales data                                         #
+#                                                                              #
+################################################################################
 
-### Preliminary Commands -----------------------------------------------------------------
+### Preliminary Commands -------------------------------------------------------
 
   ## Load Libraries
 
@@ -21,7 +21,7 @@
   CODE_PATH    <- file.path('.')
   DATA_PATH    <- file.path('.', 'data')
   STUDY_YEAR   <- 2014
-  VERBOSITY    <- 1
+  VERBOSITY    <- 1                       # Increase value for more output
   CONVERT_DATA <- FALSE
 
   ## Read in Functions and helper files
@@ -31,14 +31,13 @@
   source(file.path(CODE_PATH, 'kingBuildSales.R'))
 
   ## Set Parameters
- 
-### Converting data from .csv to .db -----------------------------------------------------
+
+### Converting data from .csv to .db -------------------------------------------
 
   if (CONVERT_DATA) {
-    if (VERBOSITY) message('Converting data');
 
- ## Convert Assessor's Characteristic Data
-  
+    if (VERBOSITY) message("Convert Assessor's Characteristic Data")
+
     convertCSVtoSQLite(
       dataPathCurrent = DATA_PATH,
       dataPathNew     = DATA_PATH,
@@ -52,10 +51,8 @@
       )
     );
 
-    if (VERBOSITY > 1) message('Created KingData', STUDY_YEAR, '.db');
-
     if (VERBOSITY > 1) message('Convert Assessed Value History')
- 
+
     convertCSVtoSQLite(
       dataPathCurrent = DATA_PATH,
       dataPathNew     = DATA_PATH,
@@ -68,15 +65,15 @@
 
 
     if (VERBOSITY > 1) message('Isolate study year in Assessed Value File')
- 
+
     kngBuildAssdVal(
-      avYears   = STUDY_YEAR + 1,  
+      avYears   = STUDY_YEAR + 1,
       assdValDB = file.path(DATA_PATH, 'KingValueHistory.db'),
       overWrite = TRUE,
       verbose   = VERBOSITY - 1
     );
 
-    if (VERBOSITY) message('Convert sales file');
+    if (VERBOSITY > 1) message('Convert sales file');
 
     convertCSVtoSQLite(
       dataPathCurrent = DATA_PATH,
@@ -92,30 +89,32 @@
 
   }
 
-### Initial cleaning and combining -------------------------------------------------------
+### Initial cleaning and combining ---------------------------------------------
 
-  if (VERBOSITY) message('Remove sales with labels indicating likely non-arms length transactions')
- 
+  if (VERBOSITY)
+    message('Remove possible non-arms length transactions (ie. with labels)')
+
   kngSCleanSales(
-    saleYears = STUDY_YEAR, 
+    saleYears = STUDY_YEAR,
     transLimit = 10,
     salesDB = file.path(DATA_PATH, 'KingSales.db'),
     trimList=list(
       SaleReason     = 2:19,
       SaleInstrument = c(0, 1, 4:28),
       SaleWarning    = paste0(" ", c(
-        1:2, 5:9, 11:14, 18:23, 25, 27, 31:33, 37, 39, 
+        1:2, 5:9, 11:14, 18:23, 25, 27, 31:33, 37, 39,
         43, 46, 48, 49, 50:53, 59, 61, 63, 64, 66
       ), " ")
     ),
     overWrite = TRUE,
-    verbose   = VERBOSITY - 1 
+    verbose   = VERBOSITY - 1
   );
 
-  if (VERBOSITY) message('Add Use category and limit to residential only sales')
+  if (VERBOSITY)
+    message('Add Use category and limit to residential only sales')
 
   kngSLabelSales(
-    saleYears = STUDY_YEAR, 
+    saleYears = STUDY_YEAR,
     salesDB   = file.path(DATA_PATH, 'KingSales.db'),
     overWrite = TRUE,
     verbose   = VERBOSITY - 1
@@ -130,7 +129,8 @@
     overWrite  = TRUE
   )
 
-  if (VERBOSITY) message('Add Parcel and Residential Building Information to the sales')
+  if (VERBOSITY)
+    message('Add Parcel and Residential Building Information to the sales')
 
   kngSSplitAttachSales(
     salesDB   = file.path(DATA_PATH, 'KingSales.db'),
@@ -152,11 +152,14 @@
 
   xSales <- kngSAttachXYs(
     xSales,
-    latlongFile = file.path(DATA_PATH, paste0('parcelPoints', STUDY_YEAR, '.shp')),
+    latlongFile =
+      file.path(DATA_PATH, paste0('parcelPoints', STUDY_YEAR, '.shp')),
     verbose = VERBOSITY - 1
   )
 
-  if (VERBOSITY) message('Write out clean data') # -----------------------------------------------------------------------
+### ----------------------------------------------------------------------------
+
+  if (VERBOSITY) message('Write out clean data')
 
   write.csv(
     xSales,
