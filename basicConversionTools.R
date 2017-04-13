@@ -12,12 +12,12 @@ convertMSAtoSQLite <- function(
   ) {
 
   ## Set libraries
-  
+
   require(RSQLite)
   require(RODBC)
 
   if (verbose > 0) mesage('Determine File Names to convert')
-  
+
   if (!is.null(fileNames)) {
     fileList <- fileNames
     if(is.null(newFileNames)) newFileNames <- fileNames
@@ -26,82 +26,82 @@ convertMSAtoSQLite <- function(
     fileList <- fileList[grep('.accdb', fileList)]
     newFileNames <- fileList
   }
-  
+
   if (verbose > 0) message('Show error if file names are not same length')
-  
+
   if (length(fileList) != length(newFileNames)) {
     cat('ERROR: File names not same length')
     return('File names not the same length')
-  }  
-  
+  }
+
   if (verbose > 0) message(''Set up connections, read and write files');
-  
+
   for(fL in 1:length(fileList)){
-    
-    if (verbose > 0) 
+
+    if (verbose > 0)
       message('Converting file number: ', fL, ' of ', length(fileList))
-    
+
     # Set up connections
-    
-    msaConn <- odbcConnectAccess2007(paste0(dataPathCurrent, '/', 
+
+    msaConn <- odbcConnectAccess2007(paste0(dataPathCurrent, '/',
                                             fileList[fL]))
-    if (verbose >0) 
+    if (verbose >0)
       message(
-        '  Converting from MS Access file: ', 
+        '  Converting from MS Access file: ',
         file.path(dataPathCurrent, fileList[fL])
       )
-    
+
     slConn <- dbConnect(
       RSQLite::SQLite(),
       dbname = file.path(dataPathNew, gsub('.accdb', '.db', newFileNames[fL]))
     )
 
-    if (verbose > 0) 
+    if (verbose > 0)
       message(
         '  Converting to SQLite file: ',
         file.path(dataPathNew, gsub('.accdb', '.db', newFileNames[fL]))
       )
-    
+
     # Read in Tables
     msaTables <- sqlTables(msaConn)
     msaTables <- msaTables[msaTables$TABLE_TYPE != 'SYSTEM TABLE', ]
-    
+
     # Write Tables
     for(tL in 1:nrow(msaTables)){
       xTable <- sqlQuery(
-        msaConn, 
+        msaConn,
         paste0('SELECT * FROM ', msaTables$TABLE_NAME[tL])
       )
-      
+
       tExists <- dbExistsTable(slConn, msaTables$TABLE_NAME[tL])
-      
+
       if (overWrite & tExists) {
         dbRemoveTable(slConn, msaTables$TABLE_NAME[tL])
 
-        if (verbose > 0) 
+        if (verbose > 0)
           message('    Removing existing table: ", msaTables$TABLE_NAME[tL]))
 
       }
-      
+
       dbWriteTable(
-        slConn, 
-        msaTables$TABLE_NAME[tL], 
-        xTable, 
+        slConn,
+        msaTables$TABLE_NAME[tL],
+        xTable,
         row.names = writeRowNames
       )
 
       if (verbose > 0) message('    Writing table: ', msaTables$TABLE_NAME[tL])
     }
-    
+
     # Close
     odbcClose(msaConn)
     dbDisconnect(slConn)
   }
-    
+
   # Return List of tables written
-  
+
   return(fileList)
-  
+
 }
 
 ### Convert CSV into SQLite data ---------------------------------------------------------
@@ -118,12 +118,12 @@ convertCSVtoSQLite <- function(
   ) {
 
   ## Set libraries
-  
+
   require(RSQLite)
   require(RODBC)
-  
+
   if (verbose > 0) message('Determine File Names to convert')
-  
+
   if (!is.null(fileNames)) {
     fileList <- fileNames
     if (is.null(tableNames)) tableNames <- gsub('.csv', '', fileNames)
@@ -132,9 +132,9 @@ convertCSVtoSQLite <- function(
     fileList <- fileList[grep('.csv', fileList)]
     if (is.null(tableNames)) tableNames <- gsub('.csv', '', fileList)
   }
-  
+
   if (verbose > 0) message('Check for proper length in file name lists')
-  
+
   if (length(fileList) != length(tableNames)) {
     stop('File names and table names not same length')
   }
@@ -143,41 +143,41 @@ convertCSVtoSQLite <- function(
 
   slConn <- dbConnect(RSQLite::SQLite(),
                       dbname=paste0(dataPathNew, '/', newFileName))
-  if (verbose > 0) 
+  if (verbose > 0)
     message('  Converting to SQLite file: ', file.path(dataPathNew, newFileName))
-  
+
   for(fL in 1:length(fileList)){
-    if (verbose > 0) 
+    if (verbose > 0)
       message('Converting file number: ', fL, ' of ', length(fileList))
-    
+
     # Read in Tables
     xTable <- read.csv(file.path(dataPathCurrent, fileList[fL]))
-      
+
     # Check to see if it exists
     tExists <- dbExistsTable(slConn, tableNames[fL])
-    
+
     if (overWrite & tExists) {
         dbRemoveTable(slConn, tableNames[fL])
 
         if (verbose > 0) message('    Removing existing table: ', tableNames[fL])
     }
-    
+
     # Write if doesn't exist
     dbWriteTable(
-      slConn, 
-      tableNames[fL], 
-      xTable, 
+      slConn,
+      tableNames[fL],
+      xTable,
       row.names = writeRowNames
     )
 
     if (verbose > 0) message('    Writing table: ', tableNames[fL])
   }
-    
+
   dbDisconnect(slConn)
 
   # Return List of tables written
-  
-  return(fileList)  
+
+  return(fileList)
 }
 
 ### Function for adding the leading zeros ------------------------------------------------
@@ -186,13 +186,13 @@ addLeadZeros <- function(xNbr,           # Numbers to add 0s to
                          maxChar = 6     # Desired total length
                          )
 {
-  
+
   # Count the number of missing zeros
-  
+
   missZero <- maxChar - nchar(xNbr)
-  
+
   # Add missing zeros
-  
+
   xNbr <- paste0(unlist(as.character(lapply(missZero, leadZeroBuilder))),
                  xNbr)
   return(xNbr)
@@ -211,36 +211,36 @@ leadZeroBuilder <- function(x)
 
 ### Function to trim a dataset based on a field with multiple values ---------------------
 
-trimByField <- function(xData,          # Dataset to be trimmed 
+trimByField <- function(xData,          # Dataset to be trimmed
                         field,          # Field to trim by
                         trimList,       # List of potential field values to trim by
                         inclusive=FALSE # Are trimList value removed (or kept as valid)
                         ){
-  
+
   ## Identify those in list
-  
+
   if(!inclusive){
     xData$valid <- 1
-    
+
     for(i in 1:length(trimList)){
       xData$valid <- ifelse(xData[field] == trimList[i], 0 , xData$valid)
     }
   } else {
     xData$valid <- 0
-    
+
     for(i in 1:length(trimList)){
       xData$valid <- ifelse(xData[field] == trimList[i], 1 , xData$valid)
     }
-    
+
   }
-  
+
   ## Trim data
-  
+
   xData <- xData[xData$valid == 1, ]
   xData$valid <- NULL
-  
+
   # Return data
-  
+
   return(xData)
 }
 
@@ -252,32 +252,32 @@ idDup <- function(xData,                # Data frame to analyze
                   newField='newField',  # Name of new field (if using 'labelNonUnique)
                   binNonUq=FALSE        # SHould unique be given as 1/0 (vs. counts)
                   ){
-  
+
   ## If removing duplicates
-  
+
   if(iddType == 'toRemove'){
     xData <- xData[!duplicated(xData[field]), ]
   }
-  
+
   # #If Labeling just the duplicated rows
-  
+
   if(iddType == 'labelDup'){
     xData[ ,ncol(xData) + 1] <- duplicated(xData[field])
-    colnames(xData)[ncol(xData)] <- newField   
+    colnames(xData)[ncol(xData)] <- newField
   }
-  
+
   ## If labeling all records that are not unique in the field
-  
+
   if(iddType == 'labelNonUnique'){
     cntTable <- as.data.frame(table(xData[field]))
     xData[ ,ncol(xData) + 1] <- cntTable$Freq[match(xData[, field],
                                                     cntTable$Var1)]
-    colnames(xData)[ncol(xData)] <- newField   
+    colnames(xData)[ncol(xData)] <- newField
     if(binNonUq){
-      xData[ ,ncol(xData)] <- ifelse(xData[ ,ncol(xData)] > 1, 1, 0)  
+      xData[ ,ncol(xData)] <- ifelse(xData[ ,ncol(xData)] > 1, 1, 0)
     }
   }
-  
+
   return(xData)
 }
 

@@ -1,7 +1,7 @@
 ################################################################################
 #                                                                              #
 #   Server for Reproducible Real Estate Analysis                               #
-#                                                                              #  
+#                                                                              #
 ################################################################################
 
 # load libraries
@@ -17,21 +17,21 @@ source('spatEconTools.R')
 setAlpha <- function(col,        # vector of colors
                      alpha=1     # single value or vector of transparency alphas
 ){
-  
+
   # Warning messages
   if(missing(col)) stop("Please provide a vector of colours.")
   if(length(alpha) != 1 & length(alpha) != length(col)){
-    stop("Please provide a single alpha value OR a value for each color in the vector")    
+    stop("Please provide a single alpha value OR a value for each color in the vector")
   }
-  
+
   # Set function to convert to 0,1 range
   rgb01 <- function(x){col2rgb(x)/255}
-  
+
   # Contruct rgb Matrix
   rgbMatrix <- lapply(col, rgb01)
-  
+
   # Apply alpha appending to all colors
-  mapply(appendAlpha, rgbMatrix, alpha=alpha) 
+  mapply(appendAlpha, rgbMatrix, alpha=alpha)
 }
 
 ### Helper function that appends alpha value to rgb values -------------------------------
@@ -39,107 +39,107 @@ setAlpha <- function(col,        # vector of colors
 appendAlpha <- function(x,       # Color as an rgb object
                         alpha    # Tranparency level 0,1
 ){
-  rgb(x[1], x[2], x[3], alpha=alpha) 
+  rgb(x[1], x[2], x[3], alpha=alpha)
 }
 
 
 
 shinyServer(function(input, output) {
 
-  
-### Reactive function to call UpdateData function ----------------------------------------  
- 
+
+### Reactive function to call UpdateData function ----------------------------------------
+
   updateData <- reactive({
-   
-    sales <- subset(kcSales, SalePrice <= as.numeric(input$priceLimits[2]) & 
+
+    sales <- subset(kcSales, SalePrice <= as.numeric(input$priceLimits[2]) &
                              SalePrice >= as.numeric(input$priceLimits[1]))
-    
-    sales <- subset(sales, SqFtLot <= as.numeric(input$lotSizeLimits[2]) & 
+
+    sales <- subset(sales, SqFtLot <= as.numeric(input$lotSizeLimits[2]) &
                            SqFtLot >= as.numeric(input$lotSizeLimits[1]))
-    
-    sales <- subset(sales, SqFtTotLiving <= as.numeric(input$homeSizeLimits[2]) & 
-                           SqFtTotLiving >= as.numeric(input$homeSizeLimits[1]))  
-    
-    sales <- subset(sales, Bedrooms <= as.numeric(input$bedLimits[2]) & 
-                           Bedrooms >= as.numeric(input$bedLimits[1]))  
-    
+
+    sales <- subset(sales, SqFtTotLiving <= as.numeric(input$homeSizeLimits[2]) &
+                           SqFtTotLiving >= as.numeric(input$homeSizeLimits[1]))
+
+    sales <- subset(sales, Bedrooms <= as.numeric(input$bedLimits[2]) &
+                           Bedrooms >= as.numeric(input$bedLimits[1]))
+
     sales
  })
 
 ### Building Model Specifications --------------------------------------------------------
 
   buildModSpec <- reactive({
-    
+
     modSpec <- "log(SalePrice) ~ "
     namesRows <- NULL
-    
+
     if(input$viewMount){
       if(input$byScore){
         modSpec <- paste0(modSpec, " + as.factor(viewMountScore)")
         namesRows <- c(namesRows, paste0("Mountain View, Level ",
-                                         names(table(updateData()$viewMountScore))[-1]))  
+                                         names(table(updateData()$viewMountScore))[-1]))
       } else {
         modSpec <- paste0(modSpec, " + viewMount")
-        namesRows <- c(namesRows, 'Mountain View')    
+        namesRows <- c(namesRows, 'Mountain View')
       }
     }
     if(input$viewWater){
       if(input$byScore){
         modSpec <- paste0(modSpec, " + as.factor(viewWaterScore)")
         namesRows <- c(namesRows, paste0("Water View, Level ",
-                                         names(table(updateData()$viewWaterScore))[-1]))  
+                                         names(table(updateData()$viewWaterScore))[-1]))
       } else {
         modSpec <- paste0(modSpec, " + viewWater")
-        namesRows <- c(namesRows, 'Water View')    
+        namesRows <- c(namesRows, 'Water View')
       }
-    }  
+    }
     if(input$viewOther){
       if(input$byScore){
         modSpec <- paste0(modSpec, " + as.factor(viewOtherScore)")
         namesRows <- c(namesRows, paste0("Other View, Level ",
-                                         names(table(updateData()$viewOtherScore))[-1]))  
+                                         names(table(updateData()$viewOtherScore))[-1]))
       } else {
         modSpec <- paste0(modSpec, " + viewOther")
-        namesRows <- c(namesRows, 'Other View')    
+        namesRows <- c(namesRows, 'Other View')
       }
-    }  
+    }
     if(input$SqFtTotLiving){
       modSpec <- paste0(modSpec, " + SqFtTotLiving")
-      namesRows <- c(namesRows, 'Home Size (SqFt)')      
+      namesRows <- c(namesRows, 'Home Size (SqFt)')
     }
     if(input$YrBuilt){
       modSpec <- paste0(modSpec, " + YrBuilt")
-      namesRows <- c(namesRows, 'Year Built')      
+      namesRows <- c(namesRows, 'Year Built')
     }
     if(input$YrRenovated){
       modSpec <- paste0(modSpec, " + YrRenovated")
-      namesRows <- c(namesRows, 'Year Renovated')      
+      namesRows <- c(namesRows, 'Year Renovated')
     }
     if(input$Baths){
       modSpec <- paste0(modSpec, " + Baths")
-      namesRows <- c(namesRows, 'Bathrooms')      
+      namesRows <- c(namesRows, 'Bathrooms')
     }
     if(input$BldgGrade){
       modSpec <- paste0(modSpec, " + BldgGrade")
-      namesRows <- c(namesRows, 'Building Quality')      
+      namesRows <- c(namesRows, 'Building Quality')
     }
     if(input$Fireplaces){
       modSpec <- paste0(modSpec, " + Fireplaces")
-      namesRows <- c(namesRows, 'Fireplaces')      
+      namesRows <- c(namesRows, 'Fireplaces')
     }
     if(input$Townhome){
       if(length(table(updateData()$Townhome)) > 1){
          modSpec <- paste0(modSpec, " + Townhome")
          namesRows <- c(namesRows, 'Townhome')
-      }   
+      }
     }
     if(input$SqFtLot){
       modSpec <- paste0(modSpec, " + SqFtLot")
-      namesRows <- c(namesRows, 'Lot Size (SqFt)')      
+      namesRows <- c(namesRows, 'Lot Size (SqFt)')
     }
     if(input$WFNT){  modSpec <- paste0(modSpec, " + WFNT")
       modSpec <- paste0(modSpec, " + WFNT")
-      namesRows <- c(namesRows, 'Water Frontage')      
+      namesRows <- c(namesRows, 'Water Frontage')
     }
     if(input$Month) {
       modSpec <- paste0(modSpec, " + as.factor(Month)")
@@ -157,7 +157,7 @@ shinyServer(function(input, output) {
   estimateModel <- eventReactive(input$rerun, {
     res <- updateData()
     modSpec <- buildModSpec()
-    
+
     if(input$spatEcon){
       swm <- buildSWM()
       modObj <- errorsarlm(as.formula(modSpec$modSpec), data=res, listw=swm, method='spam',
@@ -165,14 +165,14 @@ shinyServer(function(input, output) {
     } else {
       modObj <- lm(modSpec$modSpec, data=res)
     }
-    
+
     modObj
   })
 
 ###  Build SWM OLS Model ------------------------------------------------------------------------
 
   buildSWM <- eventReactive(input$rerun, {
-    
+
     if(input$spatEcon){
       dataSP <- SpatialPointsDataFrame(coords=cbind(updateData()$X,
                                                   updateData()$Y),
@@ -184,7 +184,7 @@ shinyServer(function(input, output) {
 
 ### Output value table -------------------------------------------------------------------
 
-  output$valTable <- renderTable({  
+  output$valTable <- renderTable({
     createCoefTable()
   })
 
@@ -200,21 +200,21 @@ shinyServer(function(input, output) {
     if(class(modRes) == 'sarlm'){
       valTable <- data.frame(Coef = modRes$coefficients,
                              StErr = modRes$rest.se)
-                             
-      errorCheck <- try(rownames(valTable) <- c('Constant', rNames), silent=T)      
+
+      errorCheck <- try(rownames(valTable) <- c('Constant', rNames), silent=T)
     } else {
-      valTable <- summary(modRes)[[4]]       
+      valTable <- summary(modRes)[[4]]
       errorCheck <- try(rownames(valTable) <- c('Constant', rNames), silent=T)
       colnames(valTable) <- c("Coef","StErr", "tval", "pval")
     }
-    
+
     if(class(errorCheck) == 'try-error'){
       xtable(data.frame(
-        message="You have filtered out too many sales, include more sales and try againv"))    
+        message="You have filtered out too many sales, include more sales and try againv"))
     } else {
-      xtable(valTable, digits=4)      
+      xtable(valTable, digits=4)
     }
-  }   
+  }
 })
 
 ### Plot View Coefficients    ------------------------------------------------------------
@@ -243,9 +243,9 @@ shinyServer(function(input, output) {
 
 ### Output value table -------------------------------------------------------------------
 
-output$diagTable <- renderTable({  
+output$diagTable <- renderTable({
     mod <- estimateModel()
-  
+
   if(class(mod) == 'sarlm'){
     r2 <- calcPseudoR2(mod)
     stderr <- sqrt(mod$s2)
@@ -265,9 +265,9 @@ output$diagTable <- renderTable({
                                      'F-Stat', 'AIC'),
                         Value = c(r2, stderr, mape, fstat, aicM))
   }
-  
 
-    xtable(diags, digits=1)                       
+
+    xtable(diags, digits=1)
 })
 
 ### Plot Residuals -----------------------------------------------------------------------
@@ -279,17 +279,17 @@ output$diagTable <- renderTable({
     over <- modOut$residuals <= 0
     xCol <- rep(4, length(modOut$residuals))
     xCol[over] <- 2
-    
+
     resPer <- abs(modOut$residuals)
     resPer[resPer>1] <- 1
 
     xCol <- setAlpha(xCol, resPer)
-    
+
     plot(res$X, res$Y, cex=.1, col=xCol, xaxt='n', yaxt='n',
        xlab="", ylab="", main='Plot of Residuals')
     legend('bottomright', c('Over Predict', 'Under Predict', 'Dark=higher error'),
-           col=c(2,4,0), pch=16)  
- 
+           col=c(2,4,0), pch=16)
+
 })
 
 

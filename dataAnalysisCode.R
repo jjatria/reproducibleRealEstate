@@ -1,10 +1,10 @@
 '#########################################################################################
-#                                                                                        #                                         
+#                                                                                        #
 #       Analyzing King County Sales Data                                                 #
-#                                                                                        #   
+#                                                                                        #
 #       by Anonymous Real Estate Author                                                  #
-#                                                                                        # 
-#       Code for Data Analysis                                                           #                                                                                                      ###  
+#                                                                                        #
+#       Code for Data Analysis                                                           #                                                                                                      ###
 #                                                                                        #
 #########################################################################################'
 
@@ -22,25 +22,25 @@
 
   codePath <- '.../reproducibleRealEstat'
   dataPath <- '.../reproducibleRealEstate'
-  
+
  ## Source Files
-  
+
   source(file.path(codePath, 'spatEconTools.R'))
- 
+
 ### Load in Data -------------------------------------------------------------------------
-  
+
  ##  Load in Prepared sales data
-  
+
   kcSales <- read.csv(file.path(dataPath, 'cleanSales.csv'), header=T)
 
 ### Initial data clean -------------------------------------------------------------------
 
- ## Remove any remaining likely non Single Family Residential 
+ ## Remove any remaining likely non Single Family Residential
 
   # Remove multiple building sales
   kcSales <- subset(kcSales, nbrBldgs == 1)
 
-  # Remove those with a present use code not of 2 or 29 
+  # Remove those with a present use code not of 2 or 29
   kcSales <- subset(kcSales, PresentUse == 2 | PresentUse == 29)
 
   # Remove those with more than one living unit
@@ -61,12 +61,12 @@
 
   # Sum up all bathrooms
   kcSales$Baths <- (kcSales$BathFullCount + kcSales$Bath3qtrCount * .75 +
-                    kcSales$BathHalfCount * .5)  
+                    kcSales$BathHalfCount * .5)
 
   # Sum up all fireplaces
   kcSales$Fireplaces <- (kcSales$FpSingleStory + kcSales$FpMultiStory +
                          kcSales$FpFreestanding + kcSales$FpAdditional)
-                         
+
   # Create a binary variable for townhomes
   kcSales$Townhome <- ifelse(kcSales$PresentUse == 29, 1, 0)
 
@@ -75,7 +75,7 @@
   kcSales$homeSize <- kcSales$SqFtTotLiving / 1000
   kcSales$Age <- 2014 - kcSales$YrBuilt
 
- ## Variables of interest (Views) 
+ ## Variables of interest (Views)
 
   # Has Mountain View
   kcSales$viewMount <- ifelse(rowSums(cbind(kcSales$MtRainier, kcSales$Olympics,
@@ -95,12 +95,12 @@
 
   # Has Other View
   kcSales$viewOther <- ifelse(rowSums(cbind(kcSales$Territorial, kcSales$SeattleSkyline,
-                                            kcSales$SmallLakeRiverCreek, 
+                                            kcSales$SmallLakeRiverCreek,
                                             kcSales$OtherView)) > 0, 1, 0)
 
   # Best Water View Rating
   kcSales$viewOtherScore <- apply(cbind(kcSales$Territorial, kcSales$SeattleSkyline,
-                                        kcSales$SmallLakeRiverCreek, 
+                                        kcSales$SmallLakeRiverCreek,
                                         kcSales$OtherView), 1, max)
 
   # Multiple Views?
@@ -126,8 +126,8 @@
 
 ### Create a base model ------------------------------------------------------------------
 
-  modBase <- lm(log(SalePrice) ~ as.factor(Month) + lotAcres + WFNT + BldgGrade + 
-                  homeSize + Baths + Age + Fireplaces + Townhome + 
+  modBase <- lm(log(SalePrice) ~ as.factor(Month) + lotAcres + WFNT + BldgGrade +
+                  homeSize + Baths + Age + Fireplaces + Townhome +
                   viewMount + viewWater + viewOther, data=trimSales)
 
  ## Test for spatial autocorrelation
@@ -147,29 +147,29 @@
 
   lmAll <- lm.LMtests(modBase, swmAll10, test=c("LMerr", "LMlag", "RLMerr", "RLMlag"))
 
- ## Specify a Spatial Error Model 
+ ## Specify a Spatial Error Model
 
   # Estimate Model
 
-  modSEM <- errorsarlm(as.formula(modBase), data=salesSP@data, swmAll10, method="spam", 
+  modSEM <- errorsarlm(as.formula(modBase), data=salesSP@data, swmAll10, method="spam",
                        zero.policy=TRUE)
 
   calcPseudoR2(modSEM)
 
 ### Add differntation based on view score
 
-  modBaseSc <- lm(log(SalePrice) ~ as.factor(Month) + lotAcres + WFNT + BldgGrade + 
+  modBaseSc <- lm(log(SalePrice) ~ as.factor(Month) + lotAcres + WFNT + BldgGrade +
                   homeSize + Baths +
-                  Age + Fireplaces + Townhome + 
-                  as.factor(viewMountScore) + 
-                  as.factor(viewWaterScore) + 
+                  Age + Fireplaces + Townhome +
+                  as.factor(viewMountScore) +
+                  as.factor(viewWaterScore) +
                   as.factor(viewOtherScore), data=trimSales)
 
- ## Specify a Spatial Error Model 
+ ## Specify a Spatial Error Model
 
   # Estimate Model
 
   modSEMSc <- errorsarlm(as.formula(modBaseSc), data=salesSP@data, swmAll10,
                          method="spam", zero.policy=TRUE)
- 
+
   calcPseudoR2(modSEMSc)
